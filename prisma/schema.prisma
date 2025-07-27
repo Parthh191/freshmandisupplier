@@ -31,16 +31,26 @@ model UserType {
 }
 
 model Vendor {
-  id         String   @id @default(cuid())
-  user       User     @relation(fields: [userId], references: [id])
-  userId     String   @unique
-  mandiName  String
-  location   String
-  latitude   Float?
-  longitude  Float?
-  products   Product[]
-  orders     Order[]
-  createdAt  DateTime @default(now())
+  id              String   @id @default(cuid())
+  user            User     @relation(fields: [userId], references: [id])
+  userId          String   @unique
+  businessName    String
+  location        String
+  latitude        Float?
+  longitude       Float?
+  isVerified      Boolean  @default(false)
+  qualityRating   Float    @default(0)
+  totalOrders     Int      @default(0)
+  monthlySpending Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastOrderAt     DateTime?
+
+  // Vendor orders (buying from suppliers)
+  vendorOrders    VendorOrder[]
+  // Legacy supplier orders (if vendor also supplies)
+  supplierOrders  Order[]
+  products        Product[]
 }
 
 model Supplier {
@@ -69,9 +79,25 @@ model Product {
   id           String    @id @default(cuid())
   name         String
   imageUrl     String?
+  description  String?   // Product description
   pricePerKg   Float
   availableQty Float
   unit         String     // e.g. "kg", "piece", etc.
+  
+  // Bulk pricing for street food vendors
+  bulkPricing  Json?     // {"5kg": 32, "10kg": 30, "25kg": 28}
+  minOrderQty  Float     @default(1)
+  maxOrderQty  Float?
+  
+  // Location and delivery
+  isLocalDelivery Boolean @default(true)
+  deliveryRadius Float?   // in kilometers
+  deliveryFee    Float    @default(0)
+  
+  // Quality and ratings
+  qualityRating Float     @default(0)
+  totalRatings  Int       @default(0)
+  
   category     Category   @relation(fields: [categoryId], references: [id])
   categoryId   String
   supplier     Supplier   @relation(fields: [supplierId], references: [id])
@@ -79,9 +105,12 @@ model Product {
   vendor       Vendor?    @relation(fields: [vendorId], references: [id])
   vendorId     String?
   orders       Order[]
+  vendorOrderItems VendorOrderItem[]
   createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }
 
+// Legacy Order model (supplier receiving orders from vendors)
 model Order {
   id         String   @id @default(cuid())
   vendor     Vendor   @relation(fields: [vendorId], references: [id])
@@ -93,6 +122,39 @@ model Order {
   status     String   // 'pending', 'confirmed', 'shipped', 'delivered'
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+// New Vendor Order model (vendors buying from suppliers)
+model VendorOrder {
+  id                  String   @id @default(cuid())
+  vendorId            String
+  totalAmount         Float
+  status              String   @default("pending") // 'pending', 'confirmed', 'ready', 'picked', 'cancelled'
+  orderType           String   @default("individual") // 'individual', 'group'
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  estimatedPickupTime DateTime?
+  actualPickupTime    DateTime?
+  
+  vendor              Vendor @relation(fields: [vendorId], references: [id])
+  items               VendorOrderItem[]
+  
+  @@map("vendor_orders")
+}
+
+model VendorOrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  productName String
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  
+  order       VendorOrder @relation(fields: [orderId], references: [id])
+  product     Product @relation(fields: [productId], references: [id])
+  
+  @@map("vendor_order_items")
 }
 
 model Notification {

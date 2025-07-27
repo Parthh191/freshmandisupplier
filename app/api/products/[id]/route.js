@@ -16,7 +16,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     const product = await prisma.product.findUnique({
       where: { id },
@@ -59,17 +59,18 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { id } = params;
     const body = await request.json();
-    const { name, pricePerKg, availableQty, unit, categoryId, imageUrl } = body;
+    const { name, pricePerKg, availableQty, unit, imageUrl } = body;
 
     // Validate required fields
-    if (!name || !pricePerKg || !availableQty || !unit || !categoryId) {
+    if (!name || !pricePerKg || !availableQty || !unit) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    const { id } = await params;
 
     // Check if product exists and belongs to the supplier
     const existingProduct = await prisma.product.findUnique({
@@ -138,7 +139,7 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Check if product exists and belongs to the supplier
     const existingProduct = await prisma.product.findUnique({

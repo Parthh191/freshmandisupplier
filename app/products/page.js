@@ -12,7 +12,8 @@ import {
   Package, 
   Eye,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -35,6 +36,26 @@ export default function ProductsPage() {
     fetchProducts();
     fetchCategories();
   }, [pagination.page, searchTerm, selectedCategory]);
+
+  // Refresh data when navigating back to this page
+  useEffect(() => {
+    const handleRouteChange = () => {
+      fetchProducts();
+    };
+
+    // Listen for route changes
+    router.events?.on('routeChangeComplete', handleRouteChange);
+    
+    return () => {
+      router.events?.off('routeChangeComplete', handleRouteChange);
+    };
+  }, [router]);
+
+  // Refresh data on component mount
+  useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+  }, []);
 
   const fetchProducts = async () => {
     try {
@@ -64,9 +85,11 @@ export default function ProductsPage() {
       }
 
       const data = await response.json();
+      console.log('Products fetched:', data); // Debug log
       setProducts(data.products);
       setPagination(data.pagination);
     } catch (err) {
+      console.error('Error fetching products:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -148,13 +171,26 @@ export default function ProductsPage() {
               <h1 className="text-3xl font-bold text-white mb-2">My Products</h1>
               <p className="text-gray-400">Manage your product catalog</p>
             </div>
-            <Link
-              href="/products/add"
-              className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
-            >
-              <Plus className="w-5 h-5" />
-              Add Product
-            </Link>
+            <div className="mt-4 sm:mt-0 flex gap-3">
+              <button
+                onClick={() => {
+                  setLoading(true);
+                  fetchProducts();
+                }}
+                disabled={loading}
+                className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <Link
+                href="/products/add"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-5 h-5" />
+                Add Product
+              </Link>
+            </div>
           </div>
         </div>
       </div>

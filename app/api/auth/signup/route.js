@@ -14,6 +14,14 @@ export async function POST(request) {
       );
     }
 
+    // Validate user type
+    if (!['supplier', 'vendor'].includes(userType)) {
+      return NextResponse.json(
+        { error: 'Invalid user type. Must be "supplier" or "vendor"' },
+        { status: 400 }
+      );
+    }
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
@@ -59,15 +67,21 @@ export async function POST(request) {
       await prisma.vendor.create({
         data: {
           userId: user.id,
-          mandiName: '',
-          location: ''
+          businessName: name,
+          location: '',
+          latitude: null,
+          longitude: null,
+          isVerified: false,
+          qualityRating: 0,
+          totalOrders: 0,
+          monthlySpending: 0
         }
       });
     } else if (userType === 'supplier') {
       await prisma.supplier.create({
         data: {
           userId: user.id,
-          businessName: '',
+          businessName: name,
           location: ''
         }
       });

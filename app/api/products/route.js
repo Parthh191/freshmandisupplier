@@ -16,6 +16,18 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
+    // Get supplier ID
+    const supplier = await prisma.supplier.findUnique({
+      where: { userId: decoded.userId }
+    });
+
+    if (!supplier) {
+      return NextResponse.json(
+        { error: 'Supplier profile not found' },
+        { status: 404 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page')) || 1;
     const limit = parseInt(searchParams.get('limit')) || 10;
@@ -26,7 +38,7 @@ export async function GET(request) {
 
     // Build where clause
     const where = {
-      supplierId: decoded.userId,
+      supplierId: supplier.id,
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
@@ -88,7 +100,21 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { name, pricePerKg, availableQty, unit, categoryId, imageUrl } = body;
+    const { 
+      name, 
+      description,
+      pricePerKg, 
+      availableQty, 
+      unit, 
+      categoryId, 
+      imageUrl,
+      minOrderQty,
+      maxOrderQty,
+      isLocalDelivery,
+      deliveryRadius,
+      deliveryFee,
+      bulkPricing
+    } = body;
 
     // Validate required fields
     if (!name || !pricePerKg || !availableQty || !unit || !categoryId) {
@@ -110,27 +136,34 @@ export async function POST(request) {
       );
     }
 
-                // Create product
-            const product = await prisma.product.create({
-              data: {
-                name,
-                pricePerKg: parseFloat(pricePerKg),
-                availableQty: parseFloat(availableQty),
-                unit,
-                imageUrl,
-                categoryId,
-                supplierId: supplier.id
-              },
-              include: {
-                category: true,
-                supplier: {
-                  select: {
-                    businessName: true,
-                    location: true
-                  }
-                }
-              }
-            });
+    // Create product
+    const product = await prisma.product.create({
+      data: {
+        name,
+        description: description || null,
+        pricePerKg: parseFloat(pricePerKg),
+        availableQty: parseFloat(availableQty),
+        unit,
+        imageUrl: imageUrl || null,
+        minOrderQty: parseFloat(minOrderQty) || 1,
+        maxOrderQty: maxOrderQty ? parseFloat(maxOrderQty) : null,
+        isLocalDelivery: isLocalDelivery !== undefined ? isLocalDelivery : true,
+        deliveryRadius: deliveryRadius ? parseFloat(deliveryRadius) : null,
+        deliveryFee: parseFloat(deliveryFee) || 0,
+        bulkPricing: bulkPricing ? JSON.stringify(bulkPricing) : null,
+        categoryId,
+        supplierId: supplier.id
+      },
+      include: {
+        category: true,
+        supplier: {
+          select: {
+            businessName: true,
+            location: true
+          }
+        }
+      }
+    });
 
             // Check for low stock and create notification
             if (parseFloat(availableQty) <= 10) {

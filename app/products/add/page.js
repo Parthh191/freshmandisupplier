@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -8,21 +8,38 @@ import {
   Package, 
   Loader2, 
   AlertCircle,
-  Upload
+  Upload,
+  X,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export default function AddProductPage() {
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
     pricePerKg: '',
     availableQty: '',
     unit: 'kg',
     categoryId: '',
-    imageUrl: ''
+    imageUrl: '',
+    minOrderQty: '1',
+    maxOrderQty: '',
+    isLocalDelivery: true,
+    deliveryRadius: '',
+    deliveryFee: '0',
+    bulkPricing: {
+      '5kg': '',
+      '10kg': '',
+      '25kg': ''
+    }
   });
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -56,6 +73,87 @@ export default function AddProductPage() {
     setError('');
   };
 
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileSelect = (file) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      setError('Image size should be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setSelectedImage({
+        file,
+        preview: e.target.result
+      });
+    };
+    reader.readAsDataURL(file);
+    setError('');
+  };
+
+  const handleFileInput = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0]);
+    }
+  };
+
+  const uploadImage = async () => {
+    if (!selectedImage) return null;
+
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          imageData: selectedImage.preview,
+          fileName: selectedImage.file.name
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload image');
+      }
+
+      return data.imageUrl;
+    } catch (err) {
+      setError(err.message);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -69,13 +167,28 @@ export default function AddProductPage() {
         return;
       }
 
+      // Upload image if selected
+      let imageUrl = formData.imageUrl;
+      if (selectedImage) {
+        const uploadedUrl = await uploadImage();
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        } else {
+          setLoading(false);
+          return;
+        }
+      }
+
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          imageUrl
+        })
       });
 
       const data = await response.json();
@@ -89,6 +202,14 @@ export default function AddProductPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    setFormData(prev => ({ ...prev, imageUrl: '' }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -232,26 +353,259 @@ export default function AddProductPage() {
               )}
             </div>
 
-            {/* Image URL */}
+            {/* Description */}
             <div>
-              <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-300 mb-2">
-                Product Image URL
+              <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
+                Product Description
               </label>
-              <div className="relative">
-                <Upload className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                rows={3}
+                className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Describe your product (quality, usage, etc.)"
+              />
+            </div>
+
+            {/* Order Quantities */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="minOrderQty" className="block text-sm font-medium text-gray-300 mb-2">
+                  Minimum Order Quantity
+                </label>
                 <input
-                  type="url"
-                  id="imageUrl"
-                  name="imageUrl"
-                  value={formData.imageUrl}
+                  type="number"
+                  id="minOrderQty"
+                  name="minOrderQty"
+                  value={formData.minOrderQty}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="https://example.com/image.jpg"
+                  step="0.01"
+                  min="0"
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="1"
                 />
               </div>
-              <p className="text-sm text-gray-400 mt-1">
-                Optional: Provide a URL to an image of your product
+              <div>
+                <label htmlFor="maxOrderQty" className="block text-sm font-medium text-gray-300 mb-2">
+                  Maximum Order Quantity (Optional)
+                </label>
+                <input
+                  type="number"
+                  id="maxOrderQty"
+                  name="maxOrderQty"
+                  value={formData.maxOrderQty}
+                  onChange={handleInputChange}
+                  step="0.01"
+                  min="0"
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="No limit"
+                />
+              </div>
+            </div>
+
+            {/* Bulk Pricing */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Bulk Pricing (Optional)
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {Object.entries(formData.bulkPricing).map(([quantity, price]) => (
+                  <div key={quantity}>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      {quantity} - Price per {formData.unit}
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                      <input
+                        type="number"
+                        value={price}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            bulkPricing: {
+                              ...prev.bulkPricing,
+                              [quantity]: e.target.value
+                            }
+                          }));
+                        }}
+                        step="0.01"
+                        min="0"
+                        className="w-full pl-8 pr-4 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Leave blank if no bulk discount is offered
               </p>
+            </div>
+
+            {/* Delivery Options */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Delivery Options
+              </label>
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isLocalDelivery"
+                    name="isLocalDelivery"
+                    checked={formData.isLocalDelivery}
+                    onChange={(e) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        isLocalDelivery: e.target.checked
+                      }));
+                    }}
+                    className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                  />
+                  <label htmlFor="isLocalDelivery" className="ml-2 text-sm text-gray-300">
+                    Offer local delivery
+                  </label>
+                </div>
+                
+                {formData.isLocalDelivery && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label htmlFor="deliveryRadius" className="block text-sm font-medium text-gray-300 mb-2">
+                        Delivery Radius (km)
+                      </label>
+                      <input
+                        type="number"
+                        id="deliveryRadius"
+                        name="deliveryRadius"
+                        value={formData.deliveryRadius}
+                        onChange={handleInputChange}
+                        step="0.1"
+                        min="0"
+                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="5"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="deliveryFee" className="block text-sm font-medium text-gray-300 mb-2">
+                        Delivery Fee (₹)
+                      </label>
+                      <input
+                        type="number"
+                        id="deliveryFee"
+                        name="deliveryFee"
+                        value={formData.deliveryFee}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Product Image Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Product Image
+              </label>
+              
+              {/* Image Preview */}
+              {selectedImage && (
+                <div className="mb-4 relative">
+                  <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-gray-600">
+                    <img
+                      src={selectedImage.preview}
+                      alt="Product preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-2 right-2 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-2">
+                    {selectedImage.file.name} ({(selectedImage.file.size / 1024 / 1024).toFixed(2)} MB)
+                  </p>
+                </div>
+              )}
+
+              {/* Upload Area */}
+              {!selectedImage && (
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    dragActive
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-gray-600 hover:border-gray-500'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="w-16 h-16 bg-gray-700/50 rounded-full flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-medium text-white mb-2">
+                        Upload Product Image
+                      </p>
+                      <p className="text-gray-400 mb-4">
+                        Drag and drop an image here, or click to browse
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+                      >
+                        Choose File
+                      </button>
+                    </div>
+                    <p className="text-sm text-gray-500">
+                      Supports: JPG, PNG, GIF (Max 5MB)
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Hidden File Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileInput}
+                className="hidden"
+              />
+
+              {/* Manual URL Input (Fallback) */}
+              <div className="mt-4">
+                <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-300 mb-2">
+                  Or provide image URL
+                </label>
+                <div className="relative">
+                  <Upload className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="url"
+                    id="imageUrl"
+                    name="imageUrl"
+                    value={formData.imageUrl}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+                <p className="text-sm text-gray-400 mt-1">
+                  Optional: Provide a URL to an image of your product
+                </p>
+              </div>
             </div>
 
             {/* Error Message */}
@@ -268,13 +622,13 @@ export default function AddProductPage() {
             <div className="flex items-center gap-4 pt-6">
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || uploading}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
-                {loading ? (
+                {loading || uploading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    Creating Product...
+                    {uploading ? 'Uploading Image...' : 'Creating Product...'}
                   </>
                 ) : (
                   <>
