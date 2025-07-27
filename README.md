@@ -1,207 +1,172 @@
-# Hackathon Project - Authentication System
+# FreshMandi - Street Food Supply Chain Platform
 
-A modern authentication system built with Next.js, Prisma, and PostgreSQL featuring attractive dark-themed login and signup pages.
+[![CI/CD Pipeline](https://github.com/yourusername/freshmandi/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/yourusername/freshmandi/actions/workflows/ci-cd.yml)
+[![Deployed on Vercel](https://vercel.com/button)](https://freshmandi.vercel.app)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
+A comprehensive marketplace platform connecting street food vendors with quality suppliers. Built for the Indian street food ecosystem with bulk pricing, local delivery, and business management tools.
 
-- 🔐 **Secure Authentication**: JWT-based authentication with bcrypt password hashing
-- 🎨 **Dark Theme UI**: Beautiful, modern dark-themed interface
-- 👥 **User Types**: Support for Vendors and Suppliers
-- 📱 **Responsive Design**: Works perfectly on all devices
-- 🔒 **Form Validation**: Client-side and server-side validation
-- 🚀 **Fast Performance**: Built with Next.js 15 and optimized for speed
+## 🚀 Features
 
-## Tech Stack
+### For Street Food Vendors
+- **Bulk Pricing**: Save money with volume discounts
+- **Local Delivery**: Quick delivery within your area
+- **Quality Assured**: All products are quality checked
+- **24/7 Availability**: Order anytime, anywhere
+- **Business Growth**: Track spending and manage inventory
+
+### For Suppliers
+- **Vendor Network**: Reach 2000+ street food vendors
+- **Inventory Management**: Easy product and category management
+- **Analytics Dashboard**: Track sales and performance
+- **Order Management**: Handle incoming orders efficiently
+- **Business Growth**: Expand your market reach
+
+## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 15, React 19, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT tokens with bcrypt password hashing
-- **Icons**: Lucide React
-- **Styling**: Tailwind CSS with custom utilities
+- **Backend**: Next.js API Routes, Prisma ORM
+- **Database**: PostgreSQL (Neon/Supabase)
+- **Authentication**: JWT, NextAuth.js
+- **Deployment**: Vercel
+- **CI/CD**: GitHub Actions
 
-## Prerequisites
+## 📦 Installation
 
-- Node.js 18+ 
+### Prerequisites
+- Node.js 18+
 - PostgreSQL database
-- npm or yarn
+- Vercel account (for deployment)
 
-## Setup Instructions
-
-### 1. Install Dependencies
-
+### Local Development
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/freshmandi.git
+cd freshmandi
+
+# Install dependencies
 npm install
-```
 
-### 2. Environment Configuration
+# Set up environment variables
+cp .env.example .env.local
+# Edit .env.local with your configuration
 
-Create a `.env.local` file in the root directory with the following variables:
+# Set up database
+npx prisma generate
+npx prisma migrate deploy
+npx prisma db seed
 
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/your_database_name"
-
-# JWT Secret (generate a strong secret for production)
-JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
-```
-
-### 3. Database Setup
-
-1. **Install Prisma CLI** (if not already installed):
-   ```bash
-   npm install -g prisma
-   ```
-
-2. **Generate Prisma Client**:
-   ```bash
-   npx prisma generate
-   ```
-
-3. **Run Database Migrations**:
-   ```bash
-   npx prisma db push
-   ```
-
-4. **Seed Initial Data** (optional):
-   ```bash
-   npx prisma db seed
-   ```
-
-### 4. Start Development Server
-
-```bash
+# Run development server
 npm run dev
 ```
 
-The application will be available at `http://localhost:3000`
+## 🔧 Environment Variables
 
-## Project Structure
+Create a `.env.local` file with the following variables:
 
-```
-hackathon/
-├── app/
-│   ├── api/auth/
-│   │   ├── login/route.js      # Login API endpoint
-│   │   └── signup/route.js     # Signup API endpoint
-│   ├── dashboard/page.js       # Dashboard page
-│   ├── login/page.js           # Login page
-│   ├── signup/page.js          # Signup page
-│   └── page.js                 # Home page (redirects to login)
-├── lib/
-│   ├── auth.js                 # Authentication utilities
-│   ├── prisma.js               # Prisma client configuration
-│   └── utils.js                # Utility functions
-├── prisma/
-│   └── schema.prisma           # Database schema
-└── package.json
+```env
+# Database
+DATABASE_URL="postgresql://username:password@host:port/database"
+
+# Authentication
+JWT_SECRET="your-super-secret-jwt-key"
+NEXTAUTH_SECRET="your-nextauth-secret"
+NEXTAUTH_URL="http://localhost:3000"
+
+# Vercel (for production)
+VERCEL_ORG_ID="your-vercel-org-id"
+VERCEL_PROJECT_ID="your-vercel-project-id"
 ```
 
-## Database Schema
+## 🚀 Deployment
 
-The application uses the following main models:
+### Automatic Deployment (Recommended)
 
-- **User**: Core user information (name, email, phone, password)
-- **UserType**: User roles (vendor/supplier)
-- **Vendor**: Vendor-specific information (mandi name, location)
-- **Supplier**: Supplier-specific information (business name, location)
-- **Category**: Product categories
-- **Product**: Product information
-- **Order**: Order management
+The project includes a comprehensive CI/CD pipeline that automatically deploys to Vercel:
 
-## API Endpoints
+1. **Push to `main` branch** → Production deployment
+2. **Pull Request to `main`** → Preview deployment
+3. **Push to `develop` branch** → Preview deployment
 
-### Authentication
+### Manual Deployment
 
-- `POST /api/auth/signup` - User registration
-- `POST /api/auth/login` - User login
+```bash
+# Install Vercel CLI
+npm i -g vercel@latest
 
-### Request/Response Examples
+# Login to Vercel
+vercel login
 
-#### Signup Request
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "phone": "+1234567890",
-  "password": "password123",
-  "userType": "vendor"
-}
+# Deploy to production
+vercel --prod
 ```
 
-#### Login Request
-```json
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
+For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-#### Login Response
-```json
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "user_id",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "userType": {
-      "type": "vendor"
-    }
-  }
-}
-```
+## 📊 Database Schema
 
-## Security Features
+The platform uses a comprehensive database schema with:
 
-- **Password Hashing**: All passwords are hashed using bcrypt
-- **JWT Tokens**: Secure token-based authentication
-- **Input Validation**: Both client-side and server-side validation
-- **Error Handling**: Comprehensive error handling and user feedback
+- **Users**: Authentication and role management
+- **Suppliers**: Business profiles and product management
+- **Vendors**: Street food vendor profiles and order history
+- **Products**: Inventory with bulk pricing and delivery options
+- **Orders**: Order management for both suppliers and vendors
+- **Categories**: Product categorization
+- **Notifications**: Real-time notifications system
 
-## Customization
+## 🎯 Street Food Categories
 
-### Styling
-The application uses Tailwind CSS with a custom dark theme. You can modify the colors and styling in the component files.
+- **Raw Materials**: Flour, rice, spices, oils
+- **Equipment & Utensils**: Tawa, kadai, serving plates
+- **Packaging Materials**: Paper plates, plastic bags, foil
+- **Fresh Produce**: Vegetables, fruits, herbs
+- **Spices & Seasonings**: Authentic Indian spices
+- **Dairy & Eggs**: Milk, paneer, eggs
+- **Grains & Flours**: Rice, wheat, specialty flours
+- **Oils & Ghee**: Cooking oils and clarified butter
 
-### User Types
-The system supports two user types:
-- **Vendor**: Can browse and purchase products
-- **Supplier**: Can list and sell products
+## 🔒 Security Features
 
-You can extend this by adding more user types in the Prisma schema.
+- JWT-based authentication
+- Role-based access control
+- Input validation and sanitization
+- CORS policy enforcement
+- Security headers configuration
+- Automatic vulnerability scanning
 
-## Deployment
+## 📈 Performance
 
-### Vercel (Recommended)
+- **Lighthouse Score**: ≥ 80 (Performance, Best Practices, SEO)
+- **Accessibility**: ≥ 90
+- **Core Web Vitals**: Optimized for all metrics
+- **Bundle Size**: Optimized with Next.js 15
+- **Database**: Connection pooling and query optimization
 
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy
-
-### Other Platforms
-
-The application can be deployed to any platform that supports Next.js:
-- Netlify
-- Railway
-- DigitalOcean App Platform
-- AWS Amplify
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## License
+## 📝 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## 🙏 Acknowledgments
 
-If you encounter any issues or have questions, please open an issue on GitHub.
-# freshmandisupplier
+- Built for Indian street food vendors
+- Inspired by the vibrant street food culture
+- Designed to solve real-world supply chain challenges
+
+## 📞 Support
+
+- **Documentation**: [DEPLOYMENT.md](./DEPLOYMENT.md)
+- **Issues**: [GitHub Issues](https://github.com/yourusername/freshmandi/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/freshmandi/discussions)
+
+---
+
+**Made with ❤️ for Indian Street Food Vendors**
