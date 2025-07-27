@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?  @unique
+  password  String
+  userType  UserType @relation(fields: [userTypeId], references: [id])
+  userTypeId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendor        Vendor?
+  supplier      Supplier?
+  notifications Notification[]
+}
+
+model UserType {
+  id   String @id @default(cuid())
+  type String @unique // 'vendor' or 'supplier'
+
+  users User[]
+}
+
+model Vendor {
+  id         String   @id @default(cuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String   @unique
+  mandiName  String
+  location   String
+  latitude   Float?
+  longitude  Float?
+  products   Product[]
+  orders     Order[]
+  createdAt  DateTime @default(now())
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String   @unique
+  businessName String
+  location     String
+  latitude     Float?
+  longitude    Float?
+  categories   Category[]
+  products     Product[]
+  createdAt    DateTime @default(now())
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  supplier    Supplier   @relation(fields: [supplierId], references: [id])
+  supplierId  String
+  products    Product[]
+}
+
+model Product {
+  id           String    @id @default(cuid())
+  name         String
+  imageUrl     String?
+  pricePerKg   Float
+  availableQty Float
+  unit         String     // e.g. "kg", "piece", etc.
+  category     Category   @relation(fields: [categoryId], references: [id])
+  categoryId   String
+  supplier     Supplier   @relation(fields: [supplierId], references: [id])
+  supplierId   String
+  vendor       Vendor?    @relation(fields: [vendorId], references: [id])
+  vendorId     String?
+  orders       Order[]
+  createdAt    DateTime   @default(now())
+}
+
+model Order {
+  id         String   @id @default(cuid())
+  vendor     Vendor   @relation(fields: [vendorId], references: [id])
+  vendorId   String
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  quantity   Float
+  totalPrice Float
+  status     String   // 'pending', 'confirmed', 'shipped', 'delivered'
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  title       String
+  message     String
+  type        String   // 'order', 'product', 'system', 'payment', 'delivery'
+  status      String   // 'unread', 'read'
+  data        Json?    // Additional data like orderId, productId, etc.
+  createdAt   DateTime @default(now())
+  readAt      DateTime?
+} 
